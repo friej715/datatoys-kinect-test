@@ -10,9 +10,6 @@
 #include "DataPoint.h"
 
 void DataPoint::setup() {
-    pos.set(ofRandom(170, 950), ofRandom(200,700), ofRandom(1900, 2300));
-    
-    ofCircle(pos.x, pos.y, pos.z, 30);
     
 }
 

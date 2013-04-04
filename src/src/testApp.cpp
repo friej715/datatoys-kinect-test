@@ -21,9 +21,10 @@ void testApp::setup() {
     
 	ofBackground(0, 0, 0);
     
-    for (int i = 0; i < 4; i++) {
-        points[i].setup();
-    }
+    points[0].pos.set(100, 100);
+    points[1].pos.set(600, 50);
+    points[2].pos.set(200, 400);
+    points[3].pos.set(600, 700);
     
 }
 
@@ -141,14 +142,18 @@ void testApp::update(){
     }
     
     for (int i = 0; i < 4; i++) {
+        bool isNearby = false;
         for (int k = 0; k < 4; k++) {
-            bool isNearby = false;
             
             if (ofDist(points[i].pos.x, points[i].pos.y, parts[k].pos.x, parts[k].pos.y) < 300) {
-                points[i].col.set(255, 255, 0);
-            } else {
-                points[i].col.set(0, 255, 255);
-            }
+                isNearby = true;
+            } 
+        }
+        
+        if (isNearby) {
+            points[i].col.set(255, 255, 0);
+        } else {
+            points[i].col.set(0, 255, 255);
         }
     }
     
@@ -162,31 +167,30 @@ void testApp::draw(){
 	ofSetColor(255, 255, 255);
     
 	glPushMatrix();
-	glScalef(0.75, 0.75, 0.75);
+	//glScalef(0.75, 0.75, 0.75);
     
 	if (isLive) {
         
-		recordDepth.draw(0,0,640,480);
-		recordImage.draw(640, 0, 640, 480);
+//		recordDepth.draw(0,0,640,480);
+		recordImage.draw(0, 0, 640*1.6, 480*1.6);
         
-		depthRangeMask.draw(0, 480, 320, 240);	// can use this with openCV to make masks, find contours etc when not dealing with openNI 'User' like objects
+//		depthRangeMask.draw(0, 480, 320, 240);	// can use this with openCV to make masks, find contours etc when not dealing with openNI 'User' like objects
         
 		if (isTracking) {
 			recordUser.draw();
             
-			if (isMasking) drawMasks();
-			if (isCloud) drawPointCloud(&recordUser, 1);	// 0 gives you all point clouds; use userID to see point clouds for specific users
+			//if (isMasking) drawMasks();
+			//if (isCloud) drawPointCloud(&recordUser, 1);	// 0 gives you all point clouds; use userID to see point clouds for specific users
             
 		}
-		if (isTrackingHands)
-			recordHandTracker.drawHands();
+		//if (isTrackingHands) recordHandTracker.drawHands();
         
 	} else {
         
-		playDepth.draw(0,0,640,480);
-		playImage.draw(640, 0, 640, 480);
+		//playDepth.draw(0,0,640,480);
+		//playImage.draw(640, 0, 640, 480);
         
-		depthRangeMask.draw(0, 480, 320, 240);	// can use this with openCV to make masks, find contours etc when not dealing with openNI 'User' like objects
+		//depthRangeMask.draw(0, 480, 320, 240);	// can use this with openCV to make masks, find contours etc when not dealing with openNI 'User' like objects
         
 		if (isTracking) {
 			playUser.draw();
