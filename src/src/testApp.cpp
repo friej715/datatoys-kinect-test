@@ -135,29 +135,33 @@ void testApp::update(){
     if (recordUser.getNumberOfTrackedUsers() > 0) {
         // we have a tracked user! yay!
         ofxTrackedUser * tracked = recordUser.getTrackedUser(1);
+        // all i'm doing here is setting the points in this array to parts of the skeleton that the kinect finds. if you start to type in tracked-> then it should autofill with the other body parts you can use. i've included z in here in case we do want to try to do depth
         parts[0].pos.set(tracked->left_lower_arm.position[1].X, tracked->left_lower_arm.position[1].Y, tracked->left_lower_arm.position[1].Z);
         parts[1].pos.set(tracked->right_lower_arm.position[1].X, tracked->right_lower_arm.position[1].Y, tracked->right_lower_arm.position[1].Z);
         parts[2].pos.set(tracked->left_lower_leg.position[1].X, tracked->left_lower_leg.position[1].Y, tracked->left_lower_leg.position[1].Z);
         parts[3].pos.set(tracked->right_lower_leg.position[1].X, tracked->right_lower_leg.position[1].Y, tracked->right_lower_leg.position[1].Z);
     }
     
+    
+    // this is what changes the color
     for (int i = 0; i < 4; i++) {
         bool isNearby = false;
         for (int k = 0; k < 4; k++) {
             
-            if (ofDist(points[i].pos.x, points[i].pos.y, parts[k].pos.x, parts[k].pos.y) < 300) {
+            if (ofDist(points[i].pos.x, points[i].pos.y, parts[k].pos.x, parts[k].pos.y) < 100) {
                 isNearby = true;
             } 
         }
         
         if (isNearby) {
+            // if any limb is near this point, do this stuff
             points[i].col.set(255, 255, 0);
         } else {
+            // otherwise, act normal
             points[i].col.set(0, 255, 255);
         }
     }
     
-    cout << "YO THESE ARE SOME POINTS " << parts[0].pos << endl;
     
 }
 
