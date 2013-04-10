@@ -10,6 +10,7 @@
 #include "Part.h"
 
 void Part::draw() {
-    ofCircle(pos.x, pos.y, 30);
+    ofSetColor(255, 255, 0);
+    ofCircle(pos.x, pos.y, 10);
     
 }

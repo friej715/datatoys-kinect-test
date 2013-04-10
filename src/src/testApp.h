@@ -60,7 +60,30 @@ public:
     
     
     Part parts[4];
-    DataPoint points[4];
+    
+    ofPoint centerPoint;
+    ofPoint rootPoint;
+    ofPoint otherLegPoint;
+    ofPoint leftShoulderPoint;
+    ofPoint rightShoulderPoint;
+    ofPoint leftHandPoint;
+    ofPoint rightHandPoint;
+    
+    bool partIsOverRootLeg, partIsOverOtherLeg, partIsOverLeftHand, partIsOverRightHand;
+    
+    
+    float unemploymentRates[4]; 
+    float amplifier;
+    int currentIndex;
+    
+    float baseArmAngle;
+    float rightArmAngle;
+    float handShoulderDistance;
+    
+    float rightRandom;
+    float leftRandom;
+    
+    void updateDataPoints();
     
     
 };

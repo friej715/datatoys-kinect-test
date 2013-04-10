@@ -21,10 +21,37 @@ void testApp::setup() {
     
 	ofBackground(0, 0, 0);
     
-    points[0].pos.set(100, 100);
-    points[1].pos.set(600, 50);
-    points[2].pos.set(200, 400);
-    points[3].pos.set(600, 700);
+    // CURRENT ORDER: LO-NATIVE, HI-NATIVE, LO-IMMIGRANT, HI-IMMIGRANT
+    amplifier = 2; // this is to amplify the unemployment rates--we can apply it to all of them so they stay consistent but have more exaggerated differences. totally optional though. can be a float.
+    
+    unemploymentRates[0] = 32 * amplifier;
+    unemploymentRates[1] = 6 * amplifier;
+    unemploymentRates[2] = 19 * amplifier;
+    unemploymentRates[3] = 6 * amplifier;
+    
+    currentIndex = 0;
+    
+    rootPoint.x = ofGetWidth()/2 - 100;
+    rootPoint.y = 700;
+    
+    centerPoint.x = rootPoint.x;
+    centerPoint.y = ofGetHeight()/2;
+    
+    // Shoulder points are temporary until attached to Kinect.
+    // Actual shoulder should probably be used to set hand positions,
+    // but then should be fixed before the player starts to stretch
+    // for them.
+    leftShoulderPoint.x = ofGetWidth()/2 - 150;
+    leftShoulderPoint.y = ofGetHeight()/2 - 80;
+    rightShoulderPoint.x = ofGetWidth()/2 - 50;
+    rightShoulderPoint.y = ofGetHeight()/2 - 80;
+    
+    // neutral hand positions; would correspond to
+    // zero unemployment
+    leftHandPoint.x = ofGetWidth()/2 - 150;
+    leftHandPoint.y = ofGetHeight()/2;
+    rightHandPoint.x = ofGetWidth()/2 - 50;
+    rightHandPoint.y = ofGetHeight()/2;
     
 }
 
@@ -79,9 +106,36 @@ void testApp::setupPlayback(string _filename) {
 	playContext.toggleMirror();
     
 }
+//--------------------------------------------------------------
+void testApp::updateDataPoints() {
+    float distanceToCenterPoint = ofDist(centerPoint.x, centerPoint.y, rootPoint.x, rootPoint.y);
+    
+    // let's calculate where the other circle should be based on the unemployment rate
+    otherLegPoint.x = centerPoint.x + cos(ofDegToRad(unemploymentRates[currentIndex])- PI/2) * distanceToCenterPoint;
+    otherLegPoint.y = centerPoint.y - sin(ofDegToRad(unemploymentRates[currentIndex])- PI/2) * distanceToCenterPoint;
+    
+    // let's calculate where the hands should be
+    // as unemployment rises, hands are lifted up, and go further away
+    // from the shoulders. Results will be random within a 30-degree range.
+    handShoulderDistance = ofMap(unemploymentRates[currentIndex]/amplifier, 0, 32, 100, 200);
+    baseArmAngle = ofMap(unemploymentRates[currentIndex]/amplifier, 0, 32, 0, 180);
+    rightArmAngle = ofMap(baseArmAngle, 0, 180, 360, 180); // swings in opposite direction
+    
+    leftHandPoint.x = leftShoulderPoint.x + cos(ofDegToRad(baseArmAngle + leftRandom) + PI/2) * handShoulderDistance;
+    leftHandPoint.y = leftShoulderPoint.y + sin(ofDegToRad(baseArmAngle + leftRandom) + PI/2) * handShoulderDistance;
+    
+    rightHandPoint.x = rightShoulderPoint.x + cos(ofDegToRad(rightArmAngle + rightRandom) + PI/2) * handShoulderDistance;
+    rightHandPoint.y = rightShoulderPoint.y + sin(ofDegToRad(rightArmAngle + rightRandom) + PI/2) * handShoulderDistance;
+    
+    cout << "Unemployment: " << unemploymentRates[currentIndex] << "  Angle: " << baseArmAngle << endl;
+    cout << "Distance: " << handShoulderDistance << endl;
+    
+}
 
 //--------------------------------------------------------------
 void testApp::update(){
+    updateDataPoints();
+    
     
 #ifdef TARGET_OSX // only working on Mac at the moment
 	hardware.update();
@@ -137,31 +191,70 @@ void testApp::update(){
         ofxTrackedUser * tracked = recordUser.getTrackedUser(1);
         // all i'm doing here is setting the points in this array to parts of the skeleton that the kinect finds. if you start to type in tracked-> then it should autofill with the other body parts you can use. i've included z in here in case we do want to try to do depth
         parts[0].pos.set(tracked->left_lower_arm.position[1].X, tracked->left_lower_arm.position[1].Y, tracked->left_lower_arm.position[1].Z);
-        parts[1].pos.set(tracked->right_lower_arm.position[1].X, tracked->right_lower_arm.position[1].Y, tracked->right_lower_arm.position[1].Z);
-        parts[2].pos.set(tracked->left_lower_leg.position[1].X, tracked->left_lower_leg.position[1].Y, tracked->left_lower_leg.position[1].Z);
-        parts[3].pos.set(tracked->right_lower_leg.position[1].X, tracked->right_lower_leg.position[1].Y, tracked->right_lower_leg.position[1].Z);
-    }
-    
-    
-    // this is what changes the color
-    for (int i = 0; i < 4; i++) {
-        bool isNearby = false;
-        for (int k = 0; k < 4; k++) {
-            
-            if (ofDist(points[i].pos.x, points[i].pos.y, parts[k].pos.x, parts[k].pos.y) < 100) {
-                isNearby = true;
-            } 
-        }
+        parts[0].pos *= 1.6;
         
-        if (isNearby) {
-            // if any limb is near this point, do this stuff
-            points[i].col.set(255, 255, 0);
-        } else {
-            // otherwise, act normal
-            points[i].col.set(0, 255, 255);
+        parts[1].pos.set(tracked->right_lower_arm.position[1].X, tracked->right_lower_arm.position[1].Y, tracked->right_lower_arm.position[1].Z);
+        parts[1].pos *= 1.6;
+        
+        parts[2].pos.set(tracked->left_lower_leg.position[1].X, tracked->left_lower_leg.position[1].Y, tracked->left_lower_leg.position[1].Z);
+        parts[2].pos *= 1.6;
+        
+        parts[3].pos.set(tracked->right_lower_leg.position[1].X, tracked->right_lower_leg.position[1].Y, tracked->right_lower_leg.position[1].Z);
+        parts[3].pos *= 1.6;
+    }
+    
+//    // draw lines
+//    ofSetColor(0);
+//    ofFill();
+//    
+//    ofLine(centerPoint, rootLeg.pos);
+//    ofLine(centerPoint, otherLeg.pos);
+//    
+//    ofLine(centerPoint, leftShoulder);
+//    ofLine(centerPoint, rightShoulder);
+//    
+//    // draw root circle
+//    ofCircle(rootLeg.pos, 30);
+//    
+//    // draw other leg circle
+//    ofCircle(otherLeg.pos, 30);
+//    
+//    // draw smaller shoulder circles
+//    ofCircle(leftShoulder, 10);
+//    ofCircle(rightShoulder, 10);
+//    
+//    // draw hands
+//    ofCircle(leftHand.pos, 30);
+//    ofCircle(rightHand.pos, 30);
+    
+    
+    partIsOverRootLeg = false;
+    for (int i = 0; i < 4; i++) {
+        if (ofDist(rootPoint.x, rootPoint.y, parts[i].pos.x, parts[i].pos.y) < 70) {
+            partIsOverRootLeg = true;
+        } 
+    }
+    
+    partIsOverOtherLeg = false;
+    for (int i = 0; i < 4; i++) {
+        if (ofDist(otherLegPoint.x, otherLegPoint.y, parts[i].pos.x, parts[i].pos.y) < 70) {
+            partIsOverOtherLeg = true;
+        } 
+    }
+    
+    partIsOverLeftHand = false;
+    for (int i = 0; i < 4; i++) {
+        if (ofDist(leftHandPoint.x, leftHandPoint.y, parts[i].pos.x, parts[i].pos.y) < 70) {
+            partIsOverLeftHand = true;
         }
     }
     
+    partIsOverRightHand = false;
+    for (int i = 0; i < 4; i++) {
+        if (ofDist(rightHandPoint.x, rightHandPoint.y, parts[i].pos.x, parts[i].pos.y) < 70) {
+            partIsOverRightHand = true;
+        } 
+    }
     
 }
 
@@ -171,31 +264,13 @@ void testApp::draw(){
 	ofSetColor(255, 255, 255);
     
 	glPushMatrix();
-	//glScalef(0.75, 0.75, 0.75);
-    
 	if (isLive) {
-        
-//		recordDepth.draw(0,0,640,480);
-		recordImage.draw(0, 0, 640*1.6, 480*1.6);
-        
-//		depthRangeMask.draw(0, 480, 320, 240);	// can use this with openCV to make masks, find contours etc when not dealing with openNI 'User' like objects
-        
+		recordImage.draw(0, 0, 640 * 1.6, 480 * 1.6);        
 		if (isTracking) {
+            ofScale(1.6, 1.6);
 			recordUser.draw();
-            
-			//if (isMasking) drawMasks();
-			//if (isCloud) drawPointCloud(&recordUser, 1);	// 0 gives you all point clouds; use userID to see point clouds for specific users
-            
 		}
-		//if (isTrackingHands) recordHandTracker.drawHands();
-        
-	} else {
-        
-		//playDepth.draw(0,0,640,480);
-		//playImage.draw(640, 0, 640, 480);
-        
-		//depthRangeMask.draw(0, 480, 320, 240);	// can use this with openCV to make masks, find contours etc when not dealing with openNI 'User' like objects
-        
+	} else {        
 		if (isTracking) {
 			playUser.draw();
             
@@ -209,68 +284,109 @@ void testApp::draw(){
     
 	glPopMatrix();
     
-    for (int i = 0; i < 4; i++) {
-        points[i].draw();
+    ofSetColor(0);
+    ofFill();
+    
+    if (recordUser.getNumberOfTrackedUsers() > 0) {
+        ofPushMatrix();
+        //ofScale(1.6, 1.6);
+        for (int i = 0; i < 4; i++) {
+            parts[i].draw();
+        }
+        ofPopMatrix();
     }
     
-    for (int i = 0; i < 4; i++) {
-        ofSetColor(255, 0, 0);
-        parts[i].draw();
-    }
+//    ofLine(centerPoint, rootPoint);
+//    ofLine(centerPoint, otherLegPoint);
+//    
+//    ofLine(centerPoint, leftShoulderPoint);
+//    ofLine(centerPoint, rightShoulderPoint);
+    
+    // draw root circle
+    if (partIsOverRootLeg)  ofSetColor(0, 255, 0);
+    if (!partIsOverRootLeg) ofSetColor(0, 0, 255);
+    ofCircle(rootPoint, 30);
+    
+    // draw other leg circle
+    if (partIsOverOtherLeg)  ofSetColor(0, 255, 0);
+    if (!partIsOverOtherLeg) ofSetColor(0, 0, 255);
+    ofCircle(otherLegPoint, 30);
+    
+//    // draw smaller shoulder circles
+//    ofCircle(leftShoulderPoint, 10);
+//    ofCircle(rightShoulderPoint, 10);
+    
+    // draw hands
+    if (partIsOverLeftHand)  ofSetColor(0, 255, 0);
+    if (!partIsOverLeftHand) ofSetColor(0, 0, 255);
+    ofCircle(leftHandPoint, 30);
+    
+    if (partIsOverRightHand)  ofSetColor(0, 255, 0);
+    if (!partIsOverRightHand) ofSetColor(0, 0, 255);
+    ofCircle(rightHandPoint, 30);
+    
+    // draw group name so we know what we're looking at
+    string currentGroup;
+    if (currentIndex == 0)      currentGroup = "LOW-ED-NATIVE";
+    if (currentIndex == 1)      currentGroup = "HIGH-ED-NATIVE";
+    if (currentIndex == 2)      currentGroup = "LOW-ED-IMMIGRANT";
+    if (currentIndex == 3)      currentGroup = "HIGH-ED-IMMIGRANT";
+    ofDrawBitmapString(currentGroup, 20, 20);
+    ofDrawBitmapString(ofToString(unemploymentRates[currentIndex]/amplifier) + "%", 20, 40);
     
     
     
-	ofSetColor(255, 255, 0);
-    
-	string statusPlay		= (string)(isLive ? "LIVE STREAM" : "PLAY STREAM");
-	string statusRec		= (string)(!isRecording ? "READY" : "RECORDING");
-	string statusSkeleton	= (string)(isTracking ? "TRACKING USERS: " + (string)(isLive ? ofToString(recordUser.getNumberOfTrackedUsers()) : ofToString(playUser.getNumberOfTrackedUsers())) + "" : "NOT TRACKING USERS");
-	string statusSmoothSkel = (string)(isLive ? ofToString(recordUser.getSmoothing()) : ofToString(playUser.getSmoothing()));
-	string statusHands		= (string)(isTrackingHands ? "TRACKING HANDS: " + (string)(isLive ? ofToString(recordHandTracker.getNumTrackedHands()) : ofToString(playHandTracker.getNumTrackedHands())) + ""  : "NOT TRACKING");
-	string statusFilter		= (string)(isFiltering ? "FILTERING" : "NOT FILTERING");
-	string statusFilterLvl	= ofToString(filterFactor);
-	string statusSmoothHand = (string)(isLive ? ofToString(recordHandTracker.getSmoothing()) : ofToString(playHandTracker.getSmoothing()));
-	string statusMask		= (string)(!isMasking ? "HIDE" : (isTracking ? "SHOW" : "YOU NEED TO TURN ON TRACKING!!"));
-	string statusCloud		= (string)(isCloud ? "ON" : "OFF");
-	string statusCloudData	= (string)(isCPBkgnd ? "SHOW BACKGROUND" : (isTracking ? "SHOW USER" : "YOU NEED TO TURN ON TRACKING!!"));
-    
-	string statusHardware;
-    
-#ifdef TARGET_OSX // only working on Mac at the moment
-	ofPoint statusAccelerometers = hardware.getAccelerometers();
-	stringstream	statusHardwareStream;
-    
-	statusHardwareStream
-	<< "ACCELEROMETERS:"
-	<< " TILT: " << hardware.getTiltAngle() << "/" << hardware.tilt_angle
-	<< " x - " << statusAccelerometers.x
-	<< " y - " << statusAccelerometers.y
-	<< " z - " << statusAccelerometers.z;
-    
-	statusHardware = statusHardwareStream.str();
-#endif
-    
-	stringstream msg;
-    
-	msg
-	<< "    s : start/stop recording  : " << statusRec << endl
-	<< "    p : playback/live streams : " << statusPlay << endl
-	<< "    t : skeleton tracking     : " << statusSkeleton << endl
-	<< "( / ) : smooth skely (openni) : " << statusSmoothSkel << endl
-	<< "    h : hand tracking         : " << statusHands << endl
-	<< "    f : filter hands (custom) : " << statusFilter << endl
-	<< "[ / ] : filter hands factor   : " << statusFilterLvl << endl
-	<< "; / ' : smooth hands (openni) : " << statusSmoothHand << endl
-	<< "    m : drawing masks         : " << statusMask << endl
-	<< "    c : draw cloud points     : " << statusCloud << endl
-	<< "    b : cloud user data       : " << statusCloudData << endl
-	<< "- / + : nearThreshold         : " << ofToString(nearThreshold) << endl
-	<< "< / > : farThreshold          : " << ofToString(farThreshold) << endl
-	<< endl
-	<< "File  : " << oniRecorder.getCurrentFileName() << endl
-	<< "FPS   : " << ofToString(ofGetFrameRate()) << "  " << statusHardware << endl;
-    
-	ofDrawBitmapString(msg.str(), 20, 560);
+//	ofSetColor(255, 255, 0);
+//    
+//	string statusPlay		= (string)(isLive ? "LIVE STREAM" : "PLAY STREAM");
+//	string statusRec		= (string)(!isRecording ? "READY" : "RECORDING");
+//	string statusSkeleton	= (string)(isTracking ? "TRACKING USERS: " + (string)(isLive ? ofToString(recordUser.getNumberOfTrackedUsers()) : ofToString(playUser.getNumberOfTrackedUsers())) + "" : "NOT TRACKING USERS");
+//	string statusSmoothSkel = (string)(isLive ? ofToString(recordUser.getSmoothing()) : ofToString(playUser.getSmoothing()));
+//	string statusHands		= (string)(isTrackingHands ? "TRACKING HANDS: " + (string)(isLive ? ofToString(recordHandTracker.getNumTrackedHands()) : ofToString(playHandTracker.getNumTrackedHands())) + ""  : "NOT TRACKING");
+//	string statusFilter		= (string)(isFiltering ? "FILTERING" : "NOT FILTERING");
+//	string statusFilterLvl	= ofToString(filterFactor);
+//	string statusSmoothHand = (string)(isLive ? ofToString(recordHandTracker.getSmoothing()) : ofToString(playHandTracker.getSmoothing()));
+//	string statusMask		= (string)(!isMasking ? "HIDE" : (isTracking ? "SHOW" : "YOU NEED TO TURN ON TRACKING!!"));
+//	string statusCloud		= (string)(isCloud ? "ON" : "OFF");
+//	string statusCloudData	= (string)(isCPBkgnd ? "SHOW BACKGROUND" : (isTracking ? "SHOW USER" : "YOU NEED TO TURN ON TRACKING!!"));
+//    
+//	string statusHardware;
+//    
+//#ifdef TARGET_OSX // only working on Mac at the moment
+//	ofPoint statusAccelerometers = hardware.getAccelerometers();
+//	stringstream	statusHardwareStream;
+//    
+//	statusHardwareStream
+//	<< "ACCELEROMETERS:"
+//	<< " TILT: " << hardware.getTiltAngle() << "/" << hardware.tilt_angle
+//	<< " x - " << statusAccelerometers.x
+//	<< " y - " << statusAccelerometers.y
+//	<< " z - " << statusAccelerometers.z;
+//    
+//	statusHardware = statusHardwareStream.str();
+//#endif
+//    
+//	stringstream msg;
+//    
+//	msg
+//	<< "    s : start/stop recording  : " << statusRec << endl
+//	<< "    p : playback/live streams : " << statusPlay << endl
+//	<< "    t : skeleton tracking     : " << statusSkeleton << endl
+//	<< "( / ) : smooth skely (openni) : " << statusSmoothSkel << endl
+//	<< "    h : hand tracking         : " << statusHands << endl
+//	<< "    f : filter hands (custom) : " << statusFilter << endl
+//	<< "[ / ] : filter hands factor   : " << statusFilterLvl << endl
+//	<< "; / ' : smooth hands (openni) : " << statusSmoothHand << endl
+//	<< "    m : drawing masks         : " << statusMask << endl
+//	<< "    c : draw cloud points     : " << statusCloud << endl
+//	<< "    b : cloud user data       : " << statusCloudData << endl
+//	<< "- / + : nearThreshold         : " << ofToString(nearThreshold) << endl
+//	<< "< / > : farThreshold          : " << ofToString(farThreshold) << endl
+//	<< endl
+//	<< "File  : " << oniRecorder.getCurrentFileName() << endl
+//	<< "FPS   : " << ofToString(ofGetFrameRate()) << "  " << statusHardware << endl;
+//    
+//	ofDrawBitmapString(msg.str(), 20, 560);
     
 }
 
@@ -504,7 +620,15 @@ void testApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void testApp::mouseReleased(int x, int y, int button){
+    rightRandom = ofRandom(-15, 15);
+    leftRandom = ofRandom(-15, 15);
     
+    
+    if (currentIndex <= 2) {
+        currentIndex++;
+    } else {
+        currentIndex = 0;
+    }
 }
 
 //--------------------------------------------------------------
